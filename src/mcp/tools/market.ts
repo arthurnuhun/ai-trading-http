@@ -9,16 +9,16 @@ import type { Services } from '../../services.js';
 const DEFAULT_LIMIT = 200;
 const FIELDS = ['timestamp', 'open', 'high', 'low', 'close', 'volume'] as const;
 
-function ok(data: object) {
+export function ok(data: object) {
   return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, ...data }) }] };
 }
 
-function fail(err: unknown, logger: Logger) {
+export function fail(err: unknown, logger: Logger) {
   if (!(err instanceof AppError)) logger.error({ err }, 'unexpected tool error');
   return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify(toErrorResponse(err)) }] };
 }
 
-function checkSymbol(services: Services, symbol: string | undefined): void {
+export function checkSymbol(services: Services, symbol: string | undefined): void {
   if (symbol !== undefined && symbol !== services.symbol) {
     throw new AppError(
       'INVALID_SYMBOL',
@@ -28,7 +28,7 @@ function checkSymbol(services: Services, symbol: string | undefined): void {
   }
 }
 
-function requireTimeframe(input: string): Timeframe {
+export function requireTimeframe(input: string): Timeframe {
   const tf = parseTimeframe(input);
   if (!tf) throw new AppError('INVALID_TIMEFRAME', `timeframe must be one of ${TIMEFRAMES.join(', ')}`, false);
   return tf;
