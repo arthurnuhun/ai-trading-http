@@ -4,11 +4,13 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 import type { Config } from './config.js';
 import type { Logger } from './logger.js';
+import type { Services } from './services.js';
+import { registerMarketTools } from './mcp/tools/market.js';
 
 export const SERVICE_NAME = 'ai-trading-http';
-export const SERVICE_VERSION = '0.1.0';
+export const SERVICE_VERSION = '0.2.0';
 
-export function createMcpServer(config: Config): McpServer {
+export function createMcpServer(config: Config, services: Services, logger: Logger): McpServer {
   const server = new McpServer({ name: SERVICE_NAME, version: SERVICE_VERSION });
 
   server.registerTool(
@@ -33,6 +35,7 @@ export function createMcpServer(config: Config): McpServer {
     }),
   );
 
+  registerMarketTools(server, services, logger);
   return server;
 }
 
@@ -42,26 +45,34 @@ const rpcError = (code: number, message: string) => ({
   id: null,
 });
 
-export function createApp(config: Config, logger: Logger) {
+export function createApp(config: Config, logger: Logger, services: Services) {
   const app = express();
   const startedAt = Date.now();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
 
+  // Always 200 so the platform keeps the service up; TradingView state is reported inside.
   app.get('/health', (_req: Request, res: Response) => {
+    const tv = services.connectionStatus();
     res.status(200).json({
-      status: 'ok',
+      status: tv.state === 'connected' ? 'ok' : 'degraded',
       service: SERVICE_NAME,
       version: SERVICE_VERSION,
       uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
-      symbol: config.tvSymbol,
+      symbol: services.symbol,
       source: 'tradingview',
-      tradingview: { status: 'not_initialized' },
+      tradingview: tv,
     });
   });
 
+  app.get('/ready', (_req: Request, res: Response) => {
+    const tv = services.connectionStatus();
+    const ready = tv.state === 'connected';
+    res.status(ready ? 200 : 503).json({ ready, tradingview: tv.state });
+  });
+
   app.post('/mcp', async (req: Request, res: Response) => {
-    const server = createMcpServer(config);
+    const server = createMcpServer(config, services, logger);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {
       void transport.close();
