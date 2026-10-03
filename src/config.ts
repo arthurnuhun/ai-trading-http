@@ -18,6 +18,7 @@ const schema = z.object({
       .default('OANDA:XAUUSD'),
   ),
   TV_SESSION: text,
+  PIP_SIZE: z.preprocess(blank, z.coerce.number().positive().optional()),
   TV_SIGNATURE: text,
   LOG_LEVEL: z.preprocess(blank, z.enum(LEVELS).default('info')),
   MARKET_CACHE_TTL_MS: int(2_000),
@@ -39,6 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     port: e.PORT,
     tvSymbol: e.TV_SYMBOL,
     tvSession: e.TV_SESSION,
+    pipSize: e.PIP_SIZE,
     tvSignature: e.TV_SIGNATURE,
     logLevel: e.LOG_LEVEL,
     ttlMs: {
