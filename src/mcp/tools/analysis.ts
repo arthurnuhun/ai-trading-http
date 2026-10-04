@@ -16,15 +16,15 @@ import { ok, fail, checkSymbol, requireTimeframe } from './market.js';
 const ANALYSIS_CANDLES = 500;
 const r3 = (v: number | null): number | null => (v === null ? null : Math.round(v * 1000) / 1000);
 
-type Loaded = { res: CandleResult; closed: Candle[]; forming: Candle | null };
+export type Loaded = { res: CandleResult; closed: Candle[]; forming: Candle | null };
 
-async function loadTf(services: Services, tf: Timeframe): Promise<Loaded> {
+export async function loadTf(services: Services, tf: Timeframe): Promise<Loaded> {
   const res = await services.getCandles(tf, ANALYSIS_CANDLES);
   const { closed, forming } = splitClosed(res.candles, tf);
   return { res, closed, forming };
 }
 
-function basis(tf: Timeframe, l: Loaded) {
+export function basis(tf: Timeframe, l: Loaded) {
   const last = l.closed.length ? l.closed[l.closed.length - 1] : null;
   return {
     timeframe: tf,
@@ -44,13 +44,13 @@ function basis(tf: Timeframe, l: Loaded) {
   };
 }
 
-function parseTfs(input: string[] | undefined): Timeframe[] {
+export function parseTfs(input: string[] | undefined): Timeframe[] {
   const tfs = [...new Set((input ?? [...TIMEFRAMES]).map(requireTimeframe))];
   if (tfs.length === 0) throw new AppError('INVALID_INPUT', 'timeframes must not be empty', false);
   return tfs;
 }
 
-async function perTimeframe(services: Services, tfs: Timeframe[], build: (tf: Timeframe, l: Loaded) => object) {
+export async function perTimeframe(services: Services, tfs: Timeframe[], build: (tf: Timeframe, l: Loaded) => object) {
   const settled = await Promise.allSettled(tfs.map(async (tf) => build(tf, await loadTf(services, tf))));
   const datasets: Record<string, object> = {};
   const errors: Record<string, unknown> = {};

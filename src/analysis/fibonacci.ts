@@ -6,6 +6,8 @@ export const EXTENSION_RATIOS = [1.272, 1.618] as const;
 const r3 = (v: number): number => Math.round(v * 1000) / 1000;
 const label = (ratio: number): string => `${Math.round(ratio * 1000) / 10}%`;
 
+// Confirmed swings and provisional extremes both fit this shape.
+export type FibSwing = Pick<Swing, 'price' | 'index' | 'timestamp' | 'isoTime'>;
 export type FibPoint = { price: number; timestamp: number; isoTime: string };
 export type FibLevel = { ratio: number; label: string; price: number };
 export type FibResult = {
@@ -17,11 +19,11 @@ export type FibResult = {
   extensions: FibLevel[];
 };
 
-const point = (s: Swing): FibPoint => ({ price: s.price, timestamp: s.timestamp, isoTime: s.isoTime });
+const point = (s: FibSwing): FibPoint => ({ price: s.price, timestamp: s.timestamp, isoTime: s.isoTime });
 
-export function fibonacci(high: Swing, low: Swing): FibResult | null {
+export function fibonacci(high: FibSwing, low: FibSwing): FibResult | null {
   const range = high.price - low.price;
-  if (!(range > 0)) return null;
+  if (!(range > 0) || high.index === low.index) return null;
   const up = low.index < high.index;
   return {
     direction: up ? 'up_leg' : 'down_leg',
@@ -41,7 +43,7 @@ export function fibonacci(high: Swing, low: Swing): FibResult | null {
   };
 }
 
-/** Uses the most recent swing high and the most recent swing low. */
+/** Uses the most recent confirmed swing high and the most recent confirmed swing low. */
 export function fibonacciFromStructure(s: StructureResult): FibResult | null {
   if (!s.lastSwingHigh || !s.lastSwingLow) return null;
   return fibonacci(s.lastSwingHigh, s.lastSwingLow);
