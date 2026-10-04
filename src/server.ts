@@ -9,9 +9,10 @@ import { registerMarketTools } from './mcp/tools/market.js';
 import { registerAnalysisTools } from './mcp/tools/analysis.js';
 import { registerLevelTools } from './mcp/tools/levels.js';
 import { registerDecisionTools } from './mcp/tools/decision.js';
+import { registerContextTools } from './mcp/tools/context.js';
 
 export const SERVICE_NAME = 'ai-trading-http';
-export const SERVICE_VERSION = '0.5.0';
+export const SERVICE_VERSION = '0.6.0';
 
 export function createMcpServer(config: Config, services: Services, logger: Logger): McpServer {
   const server = new McpServer({ name: SERVICE_NAME, version: SERVICE_VERSION });
@@ -42,6 +43,7 @@ export function createMcpServer(config: Config, services: Services, logger: Logg
   registerAnalysisTools(server, services, logger);
   registerLevelTools(server, services, logger);
   registerDecisionTools(server, services, logger);
+  registerContextTools(server, services, logger);
   return server;
 }
 
