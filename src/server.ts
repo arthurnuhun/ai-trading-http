@@ -65,27 +65,53 @@ export function createApp(config: Config, logger: Logger, services: Services) {
   const startedAt = Date.now();
   app.disable('x-powered-by');
 
-  // Bearer-token gate for /mcp only; /health and /ready stay public for the platform healthcheck.
+  // /mcp access control: Bearer header on /mcp, or a secret path segment on /mcp/<secret>
+  // for clients that cannot send headers. /health and /ready stay public.
   const authToken = config.mcpAuthToken;
-  if (authToken) {
-    app.use('/mcp', (req: Request, res: Response, next: NextFunction) => {
+  const pathSecret = config.mcpPathSecret;
+  if (authToken || pathSecret) {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path !== '/mcp' && !req.path.startsWith('/mcp/')) {
+        next();
+        return;
+      }
+      const reject = (reason: string) => {
+        logger.warn({ reason, userAgent: req.headers['user-agent'] }, 'mcp auth rejected');
+        res.status(401).json(rpcError(-32001, 'Unauthorized'));
+      };
+      const segment = req.path.slice('/mcp'.length).replace(/^\/+|\/+$/g, '');
+      if (segment) {
+        if (!pathSecret) {
+          next();
+          return;
+        }
+        if (!tokenMatches(segment, pathSecret)) {
+          reject('path_secret_mismatch');
+          return;
+        }
+        const q = req.url.indexOf('?');
+        req.url = q === -1 ? '/mcp' : `/mcp${req.url.slice(q)}`;
+        next();
+        return;
+      }
+      if (!authToken) {
+        reject('bare_mcp_requires_path_secret');
+        return;
+      }
       const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
       const provided = match?.[1]?.trim();
-      if (!provided || !tokenMatches(provided, authToken)) {
-        logger.warn(
-          {
-            reason: !req.headers.authorization ? 'missing_authorization' : !match ? 'not_bearer_scheme' : 'token_mismatch',
-            userAgent: req.headers['user-agent'],
-          },
-          'mcp auth rejected',
-        );
-        res.status(401).json(rpcError(-32001, 'Unauthorized'));
+      if (!provided) {
+        reject(req.headers.authorization ? 'not_bearer_scheme' : 'missing_authorization');
+        return;
+      }
+      if (!tokenMatches(provided, authToken)) {
+        reject('token_mismatch');
         return;
       }
       next();
     });
   } else {
-    logger.warn('MCP_AUTH_TOKEN is not set: /mcp is open without authentication');
+    logger.warn('MCP_AUTH_TOKEN and MCP_PATH_SECRET are not set: /mcp is open without authentication');
   }
   app.use(express.json({ limit: '1mb' }));
 

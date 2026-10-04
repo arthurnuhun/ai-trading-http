@@ -20,6 +20,15 @@ const schema = z.object({
   TV_SESSION: text,
   PIP_SIZE: z.preprocess(blank, z.coerce.number().positive().optional()),
   TV_SIGNATURE: text,
+  MCP_PATH_SECRET: z.preprocess(
+    blank,
+    z
+      .string()
+      .trim()
+      .min(32, 'MCP_PATH_SECRET must be at least 32 characters')
+      .regex(/^[A-Za-z0-9_-]+$/, 'MCP_PATH_SECRET may only contain letters, digits, - and _')
+      .optional(),
+  ),
   MCP_AUTH_TOKEN: z.preprocess(blank, z.string().trim().min(16, 'MCP_AUTH_TOKEN must be at least 16 characters').optional()),
   LOG_LEVEL: z.preprocess(blank, z.enum(LEVELS).default('info')),
   MARKET_CACHE_TTL_MS: int(2_000),
@@ -44,6 +53,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     pipSize: e.PIP_SIZE,
     tvSignature: e.TV_SIGNATURE,
     mcpAuthToken: e.MCP_AUTH_TOKEN,
+    mcpPathSecret: e.MCP_PATH_SECRET,
     logLevel: e.LOG_LEVEL,
     ttlMs: {
       quote: e.MARKET_CACHE_TTL_MS,
