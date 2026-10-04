@@ -94,6 +94,15 @@ export function createApp(config: Config, logger: Logger, services: Services) {
         next();
         return;
       }
+      const qt = req.query.token;
+      if (qt !== undefined) {
+        if (pathSecret && typeof qt === 'string' && tokenMatches(qt, pathSecret)) {
+          next();
+          return;
+        }
+        reject('query_token_mismatch');
+        return;
+      }
       if (!authToken) {
         reject('bare_mcp_requires_path_secret');
         return;
