@@ -72,6 +72,13 @@ export function createApp(config: Config, logger: Logger, services: Services) {
       const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
       const provided = match?.[1]?.trim();
       if (!provided || !tokenMatches(provided, authToken)) {
+        logger.warn(
+          {
+            reason: !req.headers.authorization ? 'missing_authorization' : !match ? 'not_bearer_scheme' : 'token_mismatch',
+            userAgent: req.headers['user-agent'],
+          },
+          'mcp auth rejected',
+        );
         res.status(401).json(rpcError(-32001, 'Unauthorized'));
         return;
       }
