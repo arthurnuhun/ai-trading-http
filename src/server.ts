@@ -1,6 +1,7 @@
 ﻿import express, { type NextFunction, type Request, type Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { Config } from './config.js';
 import type { Logger } from './logger.js';
@@ -53,10 +54,32 @@ const rpcError = (code: number, message: string) => ({
   id: null,
 });
 
+function tokenMatches(provided: string, expected: string): boolean {
+  const a = createHash('sha256').update(provided).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
 export function createApp(config: Config, logger: Logger, services: Services) {
   const app = express();
   const startedAt = Date.now();
   app.disable('x-powered-by');
+
+  // Bearer-token gate for /mcp only; /health and /ready stay public for the platform healthcheck.
+  const authToken = config.mcpAuthToken;
+  if (authToken) {
+    app.use('/mcp', (req: Request, res: Response, next: NextFunction) => {
+      const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
+      const provided = match?.[1]?.trim();
+      if (!provided || !tokenMatches(provided, authToken)) {
+        res.status(401).json(rpcError(-32001, 'Unauthorized'));
+        return;
+      }
+      next();
+    });
+  } else {
+    logger.warn('MCP_AUTH_TOKEN is not set: /mcp is open without authentication');
+  }
   app.use(express.json({ limit: '1mb' }));
 
   // Always 200 so the platform keeps the service up; TradingView state is reported inside.
