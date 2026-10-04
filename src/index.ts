@@ -12,6 +12,7 @@ const manager = new ConnectionManager(logger, { token: config.tvSession, signatu
 const adapter = new TradingViewAdapter(manager, { symbol: config.tvSymbol, ttlMs: config.ttlMs }, logger);
 const services: Services = {
   symbol: config.tvSymbol,
+  pipSize: config.pipSize,
   getQuote: () => adapter.getQuote(),
   getCandles: (tf, limit) => adapter.getCandles(tf, limit),
   connectionStatus: () => manager.status(),

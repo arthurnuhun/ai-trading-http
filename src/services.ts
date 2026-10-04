@@ -4,6 +4,7 @@ import type { Timeframe } from './timeframes.js';
 
 export type Services = {
   symbol: string;
+  pipSize?: number;
   getQuote(): Promise<QuoteResult>;
   getCandles(tf: Timeframe, limit?: number): Promise<CandleResult>;
   connectionStatus(): ConnectionStatus;

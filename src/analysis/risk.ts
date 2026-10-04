@@ -66,7 +66,7 @@ function sizing(i: RiskInput, riskDistance: number) {
 
 export function buildRiskPlan(i: RiskInput) {
   if (i.direction !== 'buy' && i.direction !== 'sell') bad('direction must be buy or sell');
-  if (!(i.style in MIN_RR)) bad('style must be scalp, intraday or swing');
+  if (!Object.hasOwn(MIN_RR, i.style)) bad('style must be scalp, intraday or swing');
   const entry = pos(i.entry, 'entry');
   const sl = pos(i.stopLoss, 'stopLoss');
   const pipSize = pos(i.pipSize, 'pipSize');
