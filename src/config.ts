@@ -50,6 +50,21 @@ const schema = z.object({
       .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.!-]+$/, 'US10Y_SYMBOL must look like EXCHANGE:SYMBOL')
       .default('TVC:US10Y'),
   ),
+  FED_TARGET_LOWER: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
+  FED_TARGET_UPPER: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
+  FED_EFFR: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
+  FED_RATES_ASOF: z.preprocess(
+    blank,
+    z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'FED_RATES_ASOF must be YYYY-MM-DD').optional(),
+  ),
+  ZQ_SYMBOL_PREFIX: z.preprocess(
+    blank,
+    z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$/, 'ZQ_SYMBOL_PREFIX must look like EXCHANGE:ROOT')
+      .default('CBOT:ZQ'),
+  ),
   CALENDAR_CACHE_TTL_MS: int(900_000, 60_000),
   CALENDAR_WINDOW_HOURS: int(24, 1, 168),
   FOMC_DECISION_DATES: z.preprocess(
@@ -78,6 +93,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     tvSignature: e.TV_SIGNATURE,
     mcpAuthToken: e.MCP_AUTH_TOKEN,
     mcpPathSecret: e.MCP_PATH_SECRET,
+    fed: {
+      lower: e.FED_TARGET_LOWER,
+      upper: e.FED_TARGET_UPPER,
+      effr: e.FED_EFFR,
+      asOf: e.FED_RATES_ASOF,
+      zqPrefix: e.ZQ_SYMBOL_PREFIX,
+    },
     macroSymbols: { dxy: e.DXY_SYMBOL, us10y: e.US10Y_SYMBOL },
     calendar: { cacheTtlMs: e.CALENDAR_CACHE_TTL_MS, windowHours: e.CALENDAR_WINDOW_HOURS },
     fomcDecisionDates: e.FOMC_DECISION_DATES ? e.FOMC_DECISION_DATES.split(',').map((s) => s.trim()) : [],

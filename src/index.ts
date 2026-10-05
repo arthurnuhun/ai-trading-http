@@ -7,15 +7,31 @@ import type { Services } from './services.js';
 import { createMacroProvider } from './providers/macro/composite.js';
 import { createEconomicCalendar } from './providers/macro/calendar.js';
 import { createTvSnapshotLoader } from './providers/macro/tv-snapshot.js';
+import { createFedWatchLoader } from './providers/macro/fedwatch.js';
 
 const config = loadConfig();
 const logger = createLogger(config.logLevel);
 
 const manager = new ConnectionManager(logger, { token: config.tvSession, signature: config.tvSignature });
 const adapter = new TradingViewAdapter(manager, { symbol: config.tvSymbol, ttlMs: config.ttlMs }, logger);
+const zqAdapters = new Map<string, TradingViewAdapter>();
+const zqSource = (symbol: string) => {
+  let adapter = zqAdapters.get(symbol);
+  if (!adapter) {
+    adapter = new TradingViewAdapter(manager, { symbol, ttlMs: config.ttlMs }, logger);
+    zqAdapters.set(symbol, adapter);
+  }
+  return adapter;
+};
 const macro = createMacroProvider({
   dxy: createTvSnapshotLoader(new TradingViewAdapter(manager, { symbol: config.macroSymbols.dxy, ttlMs: config.ttlMs }, logger)),
   us10y: createTvSnapshotLoader(new TradingViewAdapter(manager, { symbol: config.macroSymbols.us10y, ttlMs: config.ttlMs }, logger)),
+  fedwatch: createFedWatchLoader({
+    sourceFor: zqSource,
+    zqPrefix: config.fed.zqPrefix,
+    decisionDates: config.fomcDecisionDates,
+    rates: { lower: config.fed.lower, upper: config.fed.upper, effr: config.fed.effr, asOf: config.fed.asOf },
+  }),
   economicCalendar: createEconomicCalendar({
     logger,
     cacheTtlMs: config.calendar.cacheTtlMs,
