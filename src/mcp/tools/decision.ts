@@ -20,6 +20,8 @@ import { detectStructure } from '../../analysis/market-structure.js';
 import { sessionContext } from '../../analysis/sessions.js';
 import { ok, fail, checkSymbol } from './market.js';
 import { basis, loadTf } from './analysis.js';
+import { loadMacro } from '../../providers/context-providers.js';
+import { newsGuardWarnings } from '../../analysis/news-guard.js';
 
 function parseDirection(v: string): Direction {
   if (v === 'buy' || v === 'sell') return v;
@@ -93,7 +95,7 @@ export function registerDecisionTools(server: McpServer, services: Services, log
         const counterTrend = isCounterTrend(dir, h4Trend);
 
         const warnings: string[] = [
-          'Economic calendar is not integrated: the skill rule "no entry 30 minutes before major news" cannot be verified.',
+          ...newsGuardWarnings((await loadMacro(services)).economicCalendar),
           'The data source provides no bid/ask: the wide-spread prohibition cannot be verified.',
         ];
         if (counterTrend) {
