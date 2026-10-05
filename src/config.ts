@@ -36,6 +36,20 @@ const schema = z.object({
   M15_CACHE_TTL_MS: int(30_000),
   H1_CACHE_TTL_MS: int(120_000),
   H4_CACHE_TTL_MS: int(300_000),
+  DXY_SYMBOL: z.preprocess(
+    blank,
+    z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.!-]+$/, 'DXY_SYMBOL must look like EXCHANGE:SYMBOL')
+      .default('TVC:DXY'),
+  ),
+  US10Y_SYMBOL: z.preprocess(
+    blank,
+    z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.!-]+$/, 'US10Y_SYMBOL must look like EXCHANGE:SYMBOL')
+      .default('TVC:US10Y'),
+  ),
   CALENDAR_CACHE_TTL_MS: int(900_000, 60_000),
   CALENDAR_WINDOW_HOURS: int(24, 1, 168),
   FOMC_DECISION_DATES: z.preprocess(
@@ -64,6 +78,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     tvSignature: e.TV_SIGNATURE,
     mcpAuthToken: e.MCP_AUTH_TOKEN,
     mcpPathSecret: e.MCP_PATH_SECRET,
+    macroSymbols: { dxy: e.DXY_SYMBOL, us10y: e.US10Y_SYMBOL },
     calendar: { cacheTtlMs: e.CALENDAR_CACHE_TTL_MS, windowHours: e.CALENDAR_WINDOW_HOURS },
     fomcDecisionDates: e.FOMC_DECISION_DATES ? e.FOMC_DECISION_DATES.split(',').map((s) => s.trim()) : [],
     logLevel: e.LOG_LEVEL,
