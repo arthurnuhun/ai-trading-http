@@ -4,15 +4,26 @@ import { createApp } from './server.js';
 import { ConnectionManager } from './providers/tradingview/connection.js';
 import { TradingViewAdapter } from './providers/tradingview/adapter.js';
 import type { Services } from './services.js';
+import { createMacroProvider } from './providers/macro/composite.js';
+import { createEconomicCalendar } from './providers/macro/calendar.js';
 
 const config = loadConfig();
 const logger = createLogger(config.logLevel);
 
 const manager = new ConnectionManager(logger, { token: config.tvSession, signature: config.tvSignature });
 const adapter = new TradingViewAdapter(manager, { symbol: config.tvSymbol, ttlMs: config.ttlMs }, logger);
+const macro = createMacroProvider({
+  economicCalendar: createEconomicCalendar({
+    logger,
+    cacheTtlMs: config.calendar.cacheTtlMs,
+    windowHours: config.calendar.windowHours,
+    fomcDecisionDates: config.fomcDecisionDates,
+  }),
+});
 const services: Services = {
   symbol: config.tvSymbol,
   pipSize: config.pipSize,
+  macro,
   getQuote: () => adapter.getQuote(),
   getCandles: (tf, limit) => adapter.getCandles(tf, limit),
   connectionStatus: () => manager.status(),

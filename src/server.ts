@@ -1,6 +1,7 @@
 ﻿import express, { type NextFunction, type Request, type Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { Config } from './config.js';
 import type { Logger } from './logger.js';
@@ -53,10 +54,74 @@ const rpcError = (code: number, message: string) => ({
   id: null,
 });
 
+function tokenMatches(provided: string, expected: string): boolean {
+  const a = createHash('sha256').update(provided).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
 export function createApp(config: Config, logger: Logger, services: Services) {
   const app = express();
   const startedAt = Date.now();
   app.disable('x-powered-by');
+
+  // /mcp access control: Bearer header on /mcp, or a secret path segment on /mcp/<secret>
+  // for clients that cannot send headers. /health and /ready stay public.
+  const authToken = config.mcpAuthToken;
+  const pathSecret = config.mcpPathSecret;
+  if (authToken || pathSecret) {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path !== '/mcp' && !req.path.startsWith('/mcp/')) {
+        next();
+        return;
+      }
+      const reject = (reason: string) => {
+        logger.warn({ reason, userAgent: req.headers['user-agent'] }, 'mcp auth rejected');
+        res.status(401).json(rpcError(-32001, 'Unauthorized'));
+      };
+      const segment = req.path.slice('/mcp'.length).replace(/^\/+|\/+$/g, '');
+      if (segment) {
+        if (!pathSecret) {
+          next();
+          return;
+        }
+        if (!tokenMatches(segment, pathSecret)) {
+          reject('path_secret_mismatch');
+          return;
+        }
+        const q = req.url.indexOf('?');
+        req.url = q === -1 ? '/mcp' : `/mcp${req.url.slice(q)}`;
+        next();
+        return;
+      }
+      const qt = req.query.token;
+      if (qt !== undefined) {
+        if (pathSecret && typeof qt === 'string' && tokenMatches(qt, pathSecret)) {
+          next();
+          return;
+        }
+        reject('query_token_mismatch');
+        return;
+      }
+      if (!authToken) {
+        reject('bare_mcp_requires_path_secret');
+        return;
+      }
+      const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
+      const provided = match?.[1]?.trim();
+      if (!provided) {
+        reject(req.headers.authorization ? 'not_bearer_scheme' : 'missing_authorization');
+        return;
+      }
+      if (!tokenMatches(provided, authToken)) {
+        reject('token_mismatch');
+        return;
+      }
+      next();
+    });
+  } else {
+    logger.warn('MCP_AUTH_TOKEN and MCP_PATH_SECRET are not set: /mcp is open without authentication');
+  }
   app.use(express.json({ limit: '1mb' }));
 
   // Always 200 so the platform keeps the service up; TradingView state is reported inside.
