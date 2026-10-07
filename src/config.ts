@@ -65,6 +65,7 @@ const schema = z.object({
       .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$/, 'ZQ_SYMBOL_PREFIX must look like EXCHANGE:ROOT')
       .default('CBOT:ZQ'),
   ),
+  WGC_DEMAND_JSON: text,
   CALENDAR_CACHE_TTL_MS: int(900_000, 60_000),
   CALENDAR_WINDOW_HOURS: int(24, 1, 168),
   FOMC_DECISION_DATES: z.preprocess(
@@ -101,6 +102,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       zqPrefix: e.ZQ_SYMBOL_PREFIX,
     },
     macroSymbols: { dxy: e.DXY_SYMBOL, us10y: e.US10Y_SYMBOL },
+    wgcDemandJson: e.WGC_DEMAND_JSON,
     calendar: { cacheTtlMs: e.CALENDAR_CACHE_TTL_MS, windowHours: e.CALENDAR_WINDOW_HOURS },
     fomcDecisionDates: e.FOMC_DECISION_DATES ? e.FOMC_DECISION_DATES.split(',').map((s) => s.trim()) : [],
     logLevel: e.LOG_LEVEL,

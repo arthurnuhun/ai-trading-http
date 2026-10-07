@@ -9,6 +9,7 @@ import { createEconomicCalendar } from './providers/macro/calendar.js';
 import { createTvSnapshotLoader } from './providers/macro/tv-snapshot.js';
 import { createFedWatchLoader } from './providers/macro/fedwatch.js';
 import { createCot } from './providers/macro/cot.js';
+import { createWgcDemandLoader } from './providers/macro/wgc.js';
 
 const config = loadConfig();
 const logger = createLogger(config.logLevel);
@@ -30,6 +31,7 @@ const macro = createMacroProvider({
   us10y: createTvSnapshotLoader(new TradingViewAdapter(manager, { symbol: config.macroSymbols.us10y, ttlMs: config.ttlMs }, logger)),
   cotGold: cot.cotGold,
   cotGoldPrimary: cot.cotGoldPrimary,
+  wgcDemand: createWgcDemandLoader({ raw: config.wgcDemandJson }),
   fedwatch: createFedWatchLoader({
     sourceFor: zqSource,
     zqPrefix: config.fed.zqPrefix,
