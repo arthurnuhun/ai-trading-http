@@ -50,6 +50,13 @@ const schema = z.object({
       .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.!-]+$/, 'US10Y_SYMBOL must look like EXCHANGE:SYMBOL')
       .default('TVC:US10Y'),
   ),
+  GOLD_FUTURES_SYMBOL: z.preprocess(
+    blank,
+    z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]+:[A-Za-z0-9_.!-]+$/, 'GOLD_FUTURES_SYMBOL must look like EXCHANGE:SYMBOL')
+      .default('COMEX:GC1!'),
+  ),
   FED_TARGET_LOWER: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
   FED_TARGET_UPPER: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
   FED_EFFR: z.preprocess(blank, z.coerce.number().min(0).max(20).optional()),
@@ -101,7 +108,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       asOf: e.FED_RATES_ASOF,
       zqPrefix: e.ZQ_SYMBOL_PREFIX,
     },
-    macroSymbols: { dxy: e.DXY_SYMBOL, us10y: e.US10Y_SYMBOL },
+    macroSymbols: { dxy: e.DXY_SYMBOL, us10y: e.US10Y_SYMBOL, goldFutures: e.GOLD_FUTURES_SYMBOL },
     wgcDemandJson: e.WGC_DEMAND_JSON,
     calendar: { cacheTtlMs: e.CALENDAR_CACHE_TTL_MS, windowHours: e.CALENDAR_WINDOW_HOURS },
     fomcDecisionDates: e.FOMC_DECISION_DATES ? e.FOMC_DECISION_DATES.split(',').map((s) => s.trim()) : [],

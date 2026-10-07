@@ -6,7 +6,7 @@
   'us10y',
   'wgcDemand',
   'economicCalendar',
-  'gcq26Underlying',
+  'goldFuturesBasis',
 ] as const;
 export type MacroKey = (typeof MACRO_KEYS)[number];
 

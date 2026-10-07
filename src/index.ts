@@ -10,6 +10,7 @@ import { createTvSnapshotLoader } from './providers/macro/tv-snapshot.js';
 import { createFedWatchLoader } from './providers/macro/fedwatch.js';
 import { createCot } from './providers/macro/cot.js';
 import { createWgcDemandLoader } from './providers/macro/wgc.js';
+import { createGoldFuturesBasisLoader } from './providers/macro/gold-basis.js';
 
 const config = loadConfig();
 const logger = createLogger(config.logLevel);
@@ -32,6 +33,10 @@ const macro = createMacroProvider({
   cotGold: cot.cotGold,
   cotGoldPrimary: cot.cotGoldPrimary,
   wgcDemand: createWgcDemandLoader({ raw: config.wgcDemandJson }),
+  goldFuturesBasis: createGoldFuturesBasisLoader({
+    futures: new TradingViewAdapter(manager, { symbol: config.macroSymbols.goldFutures, ttlMs: config.ttlMs }, logger),
+    spot: adapter,
+  }),
   fedwatch: createFedWatchLoader({
     sourceFor: zqSource,
     zqPrefix: config.fed.zqPrefix,
