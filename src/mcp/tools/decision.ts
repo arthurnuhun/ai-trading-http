@@ -22,6 +22,7 @@ import { ok, fail, checkSymbol } from './market.js';
 import { basis, loadTf } from './analysis.js';
 import { loadMacro } from '../../providers/context-providers.js';
 import { newsGuardWarnings } from '../../analysis/news-guard.js';
+import { evaluateMacroBias } from '../../analysis/macro-bias.js';
 
 function parseDirection(v: string): Direction {
   if (v === 'buy' || v === 'sell') return v;
@@ -40,7 +41,7 @@ export function registerDecisionTools(server: McpServer, services: Services, log
     'confluence_check',
     {
       description:
-        'Scores the six-factor confluence checklist of analisa-xauusd for a prospective trade (direction buy/sell, style scalp/intraday/swing). Thresholds: 4/6 valid entry, 5-6/6 full confluence, <=3/6 SKIP. Factors: H4/H1 bias, S/R-FVG location (H1), heatmap, momentum (M15), session, macro bias. Heatmap and macro are "unavailable" (never counted as a pass) unless the caller supplies {status, reason}, which is marked caller_supplied. Warnings list rules the server cannot verify.',
+        'Scores the six-factor confluence checklist of analisa-xauusd for a prospective trade (direction buy/sell, style scalp/intraday/swing). Thresholds: 4/6 valid entry, 5-6/6 full confluence, <=3/6 SKIP. Factors: H4/H1 bias, S/R-FVG location (H1), heatmap, momentum (M15), session, macro bias. Heatmap is "unavailable" (never counted as a pass) unless the caller supplies {status, reason}, which is marked caller_supplied. Macro bias is computed from the 24h direction of DXY and US10Y (both must be fresh; bullish for gold only when both fall, bearish only when both rise, otherwise no clear bias, which is not a pass) unless the caller supplies {status, reason}, which overrides it and is marked caller_supplied. Warnings list rules the server cannot verify.',
       inputSchema: {
         symbol: z.string().optional(),
         direction: z.string(),
@@ -55,9 +56,14 @@ export function registerDecisionTools(server: McpServer, services: Services, log
         const dir = parseDirection(direction);
         const sty = parseStyle(style);
         const heatmapFactor = resolveOverride(heatmap, 'No heatmap provider configured');
-        const macroFactor = resolveOverride(macro, 'No macro provider configured');
+        const macroOverride = macro === undefined ? null : resolveOverride(macro, 'No macro verdict supplied');
 
-        const [h4, h1, m15] = await Promise.all([loadTf(services, 'H4'), loadTf(services, 'H1'), loadTf(services, 'M15')]);
+        const [h4, h1, m15, macroSnapshot] = await Promise.all([
+          loadTf(services, 'H4'),
+          loadTf(services, 'H1'),
+          loadTf(services, 'M15'),
+          loadMacro(services),
+        ]);
         const price = m15.res.latestCandle?.close;
         if (price === undefined) throw new AppError('DATA_QUALITY_ERROR', 'No M15 candles available', true);
 
@@ -89,13 +95,13 @@ export function registerDecisionTools(server: McpServer, services: Services, log
             divergences,
           }),
           session: evaluateSession(sty, session),
-          macro_bias: macroFactor,
+          macro_bias: macroOverride ?? evaluateMacroBias(dir, macroSnapshot),
         };
         const result = scoreConfluence(factors);
         const counterTrend = isCounterTrend(dir, h4Trend);
 
         const warnings: string[] = [
-          ...newsGuardWarnings((await loadMacro(services)).economicCalendar),
+          ...newsGuardWarnings(macroSnapshot.economicCalendar),
           'The data source provides no bid/ask: the wide-spread prohibition cannot be verified.',
         ];
         if (counterTrend) {
